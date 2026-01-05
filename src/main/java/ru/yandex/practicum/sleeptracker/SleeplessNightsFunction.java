@@ -5,9 +5,9 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class SleeplessNightsFunction implements SleepAnalysisFunction {
 
@@ -41,10 +41,10 @@ public class SleeplessNightsFunction implements SleepAnalysisFunction {
         if (totalNights <= 0) return new SleepAnalysisResult("Количество бессонных ночей", 0L);
 
         // 4. Собираем даты ночей, когда пользователь спал (00:00 - 06:00)
-        Set<LocalDate> nightsWithSleep = new HashSet<>();
-        for (SleepingSession session : sessions) {
-            nightsWithSleep.addAll(getNightsCoveredBySession(session));
-        }
+        Set<LocalDate> nightsWithSleep = sessions.stream()
+                .map(this::getNightsCoveredBySession)
+                .flatMap(Set::stream)
+                .collect(Collectors.toSet());
 
         // Фильтруем только те ночи, которые входят в наш отчетный период
         long sleptNightsInPeriod = nightsWithSleep.stream()
@@ -57,7 +57,6 @@ public class SleeplessNightsFunction implements SleepAnalysisFunction {
     }
 
     private Set<LocalDate> getNightsCoveredBySession(SleepingSession session) {
-        Set<LocalDate> covered = new HashSet<>();
         LocalDateTime start = session.getStartTime();
         LocalDateTime end = session.getEndTime();
 
@@ -66,16 +65,13 @@ public class SleeplessNightsFunction implements SleepAnalysisFunction {
         LocalDate current = start.toLocalDate();
         LocalDate last = end.toLocalDate();
 
-        while (!current.isAfter(last)) {
-            LocalDateTime nightStart = current.atStartOfDay();
-            LocalDateTime nightEnd = current.atTime(6, 0);
-
-            // Если сессия началась до 06:00 и закончилась после 00:00 текущей даты
-            if (start.isBefore(nightEnd) && end.isAfter(nightStart)) {
-                covered.add(current);
-            }
-            current = current.plusDays(1);
-        }
+        Set<LocalDate> covered = current.datesUntil(last.plusDays(1))
+                .filter(date -> {
+                    LocalDateTime nightStart = date.atStartOfDay();
+                    LocalDateTime nightEnd = date.atTime(6, 0);
+                    return start.isBefore(nightEnd) && end.isAfter(nightStart);
+                })
+                .collect(Collectors.toSet());
         return covered;
     }
 }

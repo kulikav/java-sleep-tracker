@@ -52,9 +52,8 @@ public class ChronotypeAnalysisFunction implements SleepAnalysisFunction {
             return Chronotype.OWL;
         } else if (sleepTime.isBefore(LocalTime.of(22, 0)) && wakeTime.isBefore(LocalTime.of(7, 0))) {
             return Chronotype.LARK;
-        } else {
-            return Chronotype.SPARROW;
         }
+        return Chronotype.SPARROW;
     }
 
     // Определяет доминирующий хронотип по счётчикам
